@@ -1,6 +1,10 @@
 <template>
   <div id="app">
-    <Character :cid="1"/>
+    <div class="container">
+      <div class="row">
+        <Character :cid="2" :vertical="true"/>
+      </div>
+    </div>
   </div>
 </template>
 
