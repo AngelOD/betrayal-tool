@@ -2,19 +2,36 @@
   <div id="app">
     <div class="container">
       <div class="row">
-        <Character :cid="2" :vertical="true"/>
+        <Character :cid="params.cid" :vertical="params.vertical"/>
       </div>
     </div>
   </div>
 </template>
 
 <script>
+import vueUrlParameters from 'vue-url-parameters';
 import Character from './components/Character.vue';
 
 export default {
   name: 'app',
+
   components: {
     Character,
+  },
+
+  mixins: [vueUrlParameters],
+
+  data() {
+    return {
+      params: {
+        cid: 2,
+        vertical: true,
+      },
+    };
+  },
+
+  created() {
+    this.params = this.getFiltersFromUrl(this.params, true);
   },
 };
 </script>
