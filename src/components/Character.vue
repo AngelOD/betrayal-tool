@@ -7,7 +7,7 @@
         @setup="setup"
       />
     </div>
-    <div class="row justify-content-center">
+    <div class="row justify-content-center" v-if="!hasError">
       <div class="btn-group btn-group-sm" role="group" aria-label="">
         <button
           type="button"
@@ -31,7 +31,7 @@
         ><strong>Sp+</strong></button>
       </div>
     </div>
-    <div class="row justify-content-center">
+    <div class="row justify-content-center" v-if="!hasError">
       <div class="btn-group btn-group-sm" role="group" aria-label="">
         <button
           type="button"
@@ -99,6 +99,7 @@ export default {
         fontStroke: 0,
         circle: 'magenta',
       },
+      hasError: false,
       height: 400,
       lastFps: 0,
       lastFpsUpdate: 0,
@@ -136,18 +137,38 @@ export default {
       const charsDir = (this.vertical ? 'chars_vert' : 'chars');
 
       this.char = this.getCharacterById(this.cid);
-      this.bgImg = sk.loadImage(`/assets/${charsDir}/${this.char.image.name}`);
+
+      if (!this.char) {
+        this.hasError = true;
+      } else {
+        this.bgImg = sk.loadImage(`/assets/${charsDir}/${this.char.image.name}`);
+      }
     },
 
     setup(sk) {
-      this.bgImg.resize(this.width, 0);
-      this.height = this.bgImg.height;
-      sk.createCanvas(this.width, this.height);
+      if (!this.hasError) {
+        this.bgImg.resize(this.width, 0);
+        this.height = this.bgImg.height;
 
-      this.processCharacter(sk);
+        this.processCharacter(sk);
+      }
+
+      sk.createCanvas(this.width, this.height);
     },
 
     draw(sk) {
+      if (this.hasError) {
+        sk.background(255);
+        sk.textSize(32);
+        sk.textAlign(sk.CENTER, sk.MIDDLE);
+        sk.stroke('red');
+        sk.fill('red');
+        sk.strokeWeight(1);
+        sk.text(`ERROR!`, sk.width / 2, sk.height / 2);
+
+        return;
+      }
+
       const ch = this.char;
       const chData = this.charData;
       const chImg = ch.image;

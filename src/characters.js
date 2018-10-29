@@ -308,13 +308,13 @@ const characters = [
         steps: [0, 4, 5, 5, 6, 6, 7, 8, 8],
       },
       sanity: {
-        default: 5,
+        default: 3,
         min: { x: 310, y: 167 },
         max: { x: 205, y: 85 },
         steps: [0, 2, 2, 3, 4, 5, 5, 6, 7],
       },
       speed: {
-        default: 4,
+        default: 5,
         min: { x: 117, y: 310 },
         max: { x: 74, y: 180 },
         steps: [0, 2, 2, 2, 3, 4, 5, 5, 6],

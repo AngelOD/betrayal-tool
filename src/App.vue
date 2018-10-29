@@ -9,7 +9,6 @@
 </template>
 
 <script>
-import vueUrlParameters from 'vue-url-parameters';
 import Character from './components/Character.vue';
 
 export default {
@@ -18,8 +17,6 @@ export default {
   components: {
     Character,
   },
-
-  mixins: [vueUrlParameters],
 
   data() {
     return {
@@ -31,7 +28,19 @@ export default {
   },
 
   created() {
-    this.params = this.getFiltersFromUrl(this.params, true);
+    let u = new URLSearchParams(window.location.search);
+
+    if (u.has('cid')) {
+      let cid = parseInt(u.get('cid'), 10);
+
+      if (!isNaN(cid)) {
+        this.params.cid = cid;
+      }
+    }
+
+    if (u.has('vertical')) {
+      this.params.vertical = (u.get('vertical').toLowerCase() === 'true');
+    }
   },
 };
 </script>
