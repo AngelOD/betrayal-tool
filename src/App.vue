@@ -28,12 +28,12 @@ export default {
   },
 
   created() {
-    let u = new URLSearchParams(window.location.search);
+    const u = new URLSearchParams(window.location.search);
 
     if (u.has('cid')) {
-      let cid = parseInt(u.get('cid'), 10);
+      const cid = parseInt(u.get('cid'), 10);
 
-      if (!isNaN(cid)) {
+      if (!Number.isNaN(cid)) {
         this.params.cid = cid;
       }
     }

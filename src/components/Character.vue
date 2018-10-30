@@ -5,6 +5,7 @@
         @draw="draw"
         @preload="preload"
         @setup="setup"
+        @mousereleased="mouseReleased"
       />
     </div>
     <div class="row justify-content-center" v-if="!hasError">
@@ -85,6 +86,12 @@ export default {
 
   data() {
     return {
+      arrows: {
+        height: 40,
+        margin: 10,
+        thickness: 5,
+        width: 25,
+      },
       bgImg: null,
       char: null,
       charData: {
@@ -103,6 +110,8 @@ export default {
       height: 400,
       lastFps: 0,
       lastFpsUpdate: 0,
+      maxCid: 1,
+      minCid: 12,
       statKeys: ['knowledge', 'might', 'sanity', 'speed'],
       tmpInfo: '',
       width: 400,
@@ -133,9 +142,13 @@ export default {
   destroyed() {},
 
   methods: {
+    /**
+     *
+     */
     preload(sk) {
       const charsDir = (this.vertical ? 'chars_vert' : 'chars');
 
+      this.findMinMaxCid();
       this.char = this.getCharacterById(this.cid);
 
       if (!this.char) {
@@ -145,6 +158,9 @@ export default {
       }
     },
 
+    /**
+     *
+     */
     setup(sk) {
       if (!this.hasError) {
         this.bgImg.resize(this.width, 0);
@@ -156,6 +172,9 @@ export default {
       sk.createCanvas(this.width, this.height);
     },
 
+    /**
+     *
+     */
     draw(sk) {
       if (this.hasError) {
         sk.background(255);
@@ -195,14 +214,32 @@ export default {
 
       // Browse-arrows
       const middlePos = sk.height / 2;
-      sk.beginShape();
-      sk.vertex(sk.width - 10, middlePos);
-      sk.vertex(sk.width - 30, middlePos - 20);
-      sk.vertex(sk.width - 35, middlePos - 20);
-      sk.vertex(sk.width - 15, middlePos);
-      sk.vertex(sk.width - 35, middlePos + 20);
-      sk.vertex(sk.width - 30, middlePos + 20);
-      sk.endShape(sk.CLOSE);
+      const arrowHalfHeight = this.arrows.height / 2;
+      const arrowMargin = this.arrows.margin;
+      const arrowThickness = this.arrows.thickness;
+      const arrowWidth = this.arrows.width;
+
+      if (this.cid > this.minCid) {
+        sk.beginShape();
+        sk.vertex(arrowMargin, middlePos);
+        sk.vertex(arrowWidth + arrowThickness, middlePos - arrowHalfHeight);
+        sk.vertex(arrowWidth + arrowMargin, middlePos - arrowHalfHeight);
+        sk.vertex(arrowMargin + arrowThickness, middlePos);
+        sk.vertex(arrowWidth + arrowMargin, middlePos + arrowHalfHeight);
+        sk.vertex(arrowWidth + arrowThickness, middlePos + arrowHalfHeight);
+        sk.endShape(sk.CLOSE);
+      }
+
+      if (this.cid < this.maxCid) {
+        sk.beginShape();
+        sk.vertex(sk.width - arrowMargin, middlePos);
+        sk.vertex(sk.width - (arrowWidth + arrowThickness), middlePos - arrowHalfHeight);
+        sk.vertex(sk.width - (arrowWidth + arrowMargin), middlePos - arrowHalfHeight);
+        sk.vertex(sk.width - (arrowMargin + arrowThickness), middlePos);
+        sk.vertex(sk.width - (arrowWidth + arrowMargin), middlePos + arrowHalfHeight);
+        sk.vertex(sk.width - (arrowWidth + arrowThickness), middlePos + arrowHalfHeight);
+        sk.endShape(sk.CLOSE);
+      }
 
       // TODO Marker buttons
 
@@ -230,11 +267,91 @@ export default {
       });
     },
 
+    /**
+     *
+     */
+    mouseReleased(sk) {
+      const arrowHalfHeight = this.arrows.height / 2;
+      const arrowMargin = this.arrows.margin;
+      const arrowTotalWidth = (this.arrows.width + this.arrows.thickness);
+      const halfHeight = this.height / 2;
+      const mX = sk.mouseX;
+      const mY = sk.mouseY;
+
+      const left = [
+        arrowMargin,
+        halfHeight - arrowHalfHeight,
+        arrowMargin + arrowTotalWidth,
+        halfHeight + arrowHalfHeight,
+      ];
+      const right = [
+        this.width - (arrowMargin + arrowTotalWidth),
+        left[1],
+        this.width - arrowMargin,
+        left[3],
+      ];
+
+      if (
+        this.cid > this.minCid
+        && mX >= left[0] && mX <= left[2]
+        && mY >= left[1] && mY <= left[3]
+      ) {
+        this.onClickArrow(sk, -1);
+      }
+
+      if (
+        this.cid < this.maxCid
+        && mX >= right[0] && mX <= right[2]
+        && mY >= right[1] && mY <= right[3]
+      ) {
+        this.onClickArrow(sk, 1);
+      }
+
+      return false;
+    },
+
+    /**
+     *
+     */
+    findMinMaxCid() {
+      let minCid = -1;
+      let maxCid = -1;
+
+      CharList.forEach((elem) => {
+        if (minCid === -1 || elem.cid < minCid) {
+          minCid = elem.cid;
+        }
+
+        if (maxCid === -1 || elem.cid > maxCid) {
+          maxCid = elem.cid;
+        }
+      });
+
+      this.maxCid = maxCid;
+      this.minCid = minCid;
+    },
+
+    /**
+     *
+     */
     getCharacterById(cid) {
       const sCid = parseInt(cid, 10);
       return CharList.find(elem => elem.cid === sCid);
     },
 
+    /**
+     *
+     */
+    getUrl(cid) {
+      const loc = window.location;
+      const u = `${loc.origin}${loc.pathname}${loc.hash}?cid=${cid}&vertical=${this.vertical}`;
+
+      return u;
+    },
+
+    /**
+     *
+     */
     processCharacter(sk) {
       if (this.char.isProcessed) { return; }
 
@@ -297,6 +414,19 @@ export default {
       this.char.isProcessed = true;
     },
 
+    /**
+     *
+     */
+    onClickArrow(sk, modifyBy) {
+      const newCid = sk.constrain(this.cid + modifyBy, this.minCid, this.maxCid);
+      const newUrl = this.getUrl(newCid);
+
+      window.location.replace(newUrl);
+    },
+
+    /**
+     *
+     */
     onClickStatButton(stat, value) {
       if (!this.statKeys.includes(stat)) { return; }
 
