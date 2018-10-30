@@ -164,7 +164,7 @@ export default {
         sk.stroke('red');
         sk.fill('red');
         sk.strokeWeight(1);
-        sk.text(`ERROR!`, sk.width / 2, sk.height / 2);
+        sk.text('ERROR!', sk.width / 2, sk.height / 2);
 
         return;
       }
@@ -181,9 +181,11 @@ export default {
         this.lastFpsUpdate = now;
       }
 
+      // Background
       sk.background(colors.bg);
       sk.image(this.bgImg, 0, 0);
 
+      // Text information
       sk.textSize(14);
       sk.textAlign(sk.RIGHT, sk.TOP);
       sk.stroke(colors.fontStroke);
@@ -191,6 +193,20 @@ export default {
       sk.strokeWeight(1);
       sk.text(`${this.lastFps}`, sk.width - 5, 5);
 
+      // Browse-arrows
+      const middlePos = sk.height / 2;
+      sk.beginShape();
+      sk.vertex(sk.width - 10, middlePos);
+      sk.vertex(sk.width - 30, middlePos - 20);
+      sk.vertex(sk.width - 35, middlePos - 20);
+      sk.vertex(sk.width - 15, middlePos);
+      sk.vertex(sk.width - 35, middlePos + 20);
+      sk.vertex(sk.width - 30, middlePos + 20);
+      sk.endShape(sk.CLOSE);
+
+      // TODO Marker buttons
+
+      // Marker positions
       sk.noFill();
       sk.stroke(colors.circle);
       sk.strokeWeight(2);
