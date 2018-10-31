@@ -62,6 +62,7 @@
 
 <script>
 import VueP5 from 'vue-p5';
+import moment from 'moment';
 import { characters as CharList, verticalMeasures } from '../characters';
 import Directions from '../constants';
 
@@ -94,6 +95,7 @@ export default {
         width: 25,
       },
       bgImg: null,
+      buttonCoords: [],
       char: null,
       charData: {
         knowledge: 0,
@@ -112,6 +114,11 @@ export default {
       lastFps: 0,
       lastFpsUpdate: 0,
       markerArrows: [],
+      markerArrowData: {
+        height: 15,
+        thickness: 4,
+        width: 20,
+      },
       maxCid: 1,
       minCid: 12,
       statKeys: ['knowledge', 'might', 'sanity', 'speed'],
@@ -213,6 +220,9 @@ export default {
       sk.fill(colors.fontFill);
       sk.strokeWeight(1);
       sk.text(`${this.lastFps}`, sk.width - 5, 5);
+
+      sk.textAlign(sk.LEFT, sk.TOP);
+      sk.text(`${this.char.daysTillBirthday} days`, 5, 5);
 
       // Browse-arrows
       const middlePos = sk.height / 2;
@@ -431,7 +441,28 @@ export default {
       const chImg = this.char.image;
       const segCount = 8;
       const isVertical = this.vertical;
+      const { onClickStatButton } = this;
 
+      // Find number of days till next birthday
+      const now = moment()
+        .hour(0)
+        .minute(0)
+        .second(0)
+        .millisecond(0);
+      const birthday = moment()
+        .month(this.char.birthday.m - 1)
+        .date(this.char.birthday.d)
+        .hour(23)
+        .minute(59)
+        .second(59);
+
+      if (birthday.isBefore(now)) {
+        birthday.add(1, 'years');
+      }
+
+      this.char.daysTillBirthday = birthday.diff(now, 'days');
+
+      // Adjust measurements that aren't dependent on stat key
       if (height !== 1100) {
         verticalMeasures.yValues.forEach((yVal, idx) => {
           verticalMeasures.yValues[idx] = height * (yVal / 1100);
@@ -442,9 +473,11 @@ export default {
         });
       }
 
+      // Perform processing on everything depending on stat key
       keys.forEach((key) => {
         const { min, max } = chImg[key];
 
+        // Adjust measurements
         if (width !== 800) {
           verticalMeasures[key] = width * (verticalMeasures[key] / 800);
         }
@@ -459,6 +492,8 @@ export default {
           max.x = width * (max.x / 400);
         }
 
+        // Calculate position values for non-vertical layout.
+        // It's a one-time thing so it doesn't really need to be optimized out.
         const a = (max.y - min.y) / (max.x - min.x);
         const mult = (min.x < max.x ? 1 : -1);
         const totalLen = sk.sqrt(sk.sq(max.x - min.x) + sk.sq(max.y - min.y));
@@ -472,8 +507,9 @@ export default {
 
         for (let i = 1; i <= segCount; i += 1) {
           const d = segLen * i;
-          let xPos =
-              sk.round(min.x + (sk.sqrt(sk.sq(d) / (1 + sk.sq(a))) * mult));
+          let xPos = sk.round(
+            min.x + (sk.sqrt(sk.sq(d) / (1 + sk.sq(a))) * mult),
+          );
 
           if (i === segCount) { xPos = max.x; }
 
@@ -483,30 +519,56 @@ export default {
         chImg[key].xPositions = xPositions;
         chImg[key].getY = x => (chImg[key].li.a * x) + chImg[key].li.b;
 
+        // Set current selection to be the default one for the character
         chData[key] = chImg[key].default;
 
+        // Setup the raise and lower values arrows one time.
         if (isVertical) {
           this.markerArrows.push(...[
             [
               Directions.UP,
               verticalMeasures[key],
               verticalMeasures.arrowYs[0],
-              20,
-              15,
-              4,
+              this.markerArrowData.width,
+              this.markerArrowData.height,
+              this.markerArrowData.thickness,
             ],
             [
               Directions.DOWN,
               verticalMeasures[key],
               verticalMeasures.arrowYs[1],
-              20,
-              15,
-              4,
+              this.markerArrowData.width,
+              this.markerArrowData.height,
+              this.markerArrowData.thickness,
             ],
           ]);
+
+          this.buttonCoords.push(...[
+            {
+              x1: verticalMeasures[key] - (this.markerArrowData.width / 2),
+              y1: verticalMeasures.arrowYs[0],
+              x2: verticalMeasures[key] + (this.markerArrowData.width / 2),
+              y2: verticalMeasures.arrowYs[0] + this.markerArrowData.height,
+              onClick() {
+                onClickStatButton(key, 1);
+              },
+            },
+            {
+              x1: verticalMeasures[key] - (this.markerArrowData.width / 2),
+              y1: verticalMeasures.arrowYs[1] - this.markerArrowData.height,
+              x2: verticalMeasures[key] + (this.markerArrowData.width / 2),
+              y2: verticalMeasures.arrowYs[1],
+              onClick() {
+                onClickStatButton(key, 2);
+              },
+            },
+          ]);
+        } else {
+          // TODO Setup non-vertical versions
         }
       });
 
+      // Make sure we do not process characters multiple times
       this.char.isProcessed = true;
     },
 
