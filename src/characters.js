@@ -497,6 +497,7 @@ const characters = [
 ];
 
 const verticalMeasures = {
+  arrowYs: [660, 1030],
   yValues: [1055, 989, 948, 907, 866, 825, 784, 744, 702],
   knowledge: 462,
   might: 340,

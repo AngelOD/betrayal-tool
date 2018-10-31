@@ -63,6 +63,7 @@
 <script>
 import VueP5 from 'vue-p5';
 import { characters as CharList, verticalMeasures } from '../characters';
+import Directions from '../constants';
 
 let uuid = 1;
 
@@ -110,6 +111,7 @@ export default {
       height: 400,
       lastFps: 0,
       lastFpsUpdate: 0,
+      markerArrows: [],
       maxCid: 1,
       minCid: 12,
       statKeys: ['knowledge', 'might', 'sanity', 'speed'],
@@ -214,34 +216,67 @@ export default {
 
       // Browse-arrows
       const middlePos = sk.height / 2;
-      const arrowHalfHeight = this.arrows.height / 2;
-      const arrowMargin = this.arrows.margin;
-      const arrowThickness = this.arrows.thickness;
-      const arrowWidth = this.arrows.width;
 
       if (this.cid > this.minCid) {
-        sk.beginShape();
-        sk.vertex(arrowMargin, middlePos);
-        sk.vertex(arrowWidth + arrowThickness, middlePos - arrowHalfHeight);
-        sk.vertex(arrowWidth + arrowMargin, middlePos - arrowHalfHeight);
-        sk.vertex(arrowMargin + arrowThickness, middlePos);
-        sk.vertex(arrowWidth + arrowMargin, middlePos + arrowHalfHeight);
-        sk.vertex(arrowWidth + arrowThickness, middlePos + arrowHalfHeight);
-        sk.endShape(sk.CLOSE);
+        this.drawArrow(
+          sk,
+          Directions.LEFT,
+          this.arrows.margin,
+          middlePos,
+          this.arrows.width,
+          this.arrows.height,
+          this.arrows.thickness,
+        );
       }
 
       if (this.cid < this.maxCid) {
-        sk.beginShape();
-        sk.vertex(sk.width - arrowMargin, middlePos);
-        sk.vertex(sk.width - (arrowWidth + arrowThickness), middlePos - arrowHalfHeight);
-        sk.vertex(sk.width - (arrowWidth + arrowMargin), middlePos - arrowHalfHeight);
-        sk.vertex(sk.width - (arrowMargin + arrowThickness), middlePos);
-        sk.vertex(sk.width - (arrowWidth + arrowMargin), middlePos + arrowHalfHeight);
-        sk.vertex(sk.width - (arrowWidth + arrowThickness), middlePos + arrowHalfHeight);
-        sk.endShape(sk.CLOSE);
+        this.drawArrow(
+          sk,
+          Directions.RIGHT,
+          sk.width - this.arrows.margin,
+          middlePos,
+          this.arrows.width,
+          this.arrows.height,
+          this.arrows.thickness,
+        );
       }
 
       // TODO Marker buttons
+      sk.fill('red');
+      sk.stroke('red');
+      sk.strokeWeight(1);
+
+      this.statKeys.forEach((key) => {
+        const arrows = [];
+
+        if (isVertical) {
+          arrows.push(...[
+            [
+              Directions.UP,
+              verticalMeasures[key],
+              verticalMeasures.arrowYs[0],
+              20,
+              15,
+              4,
+            ],
+            [
+              Directions.DOWN,
+              verticalMeasures[key],
+              verticalMeasures.arrowYs[1],
+              20,
+              15,
+              4,
+            ],
+          ]);
+        } else {
+          // TODO Complete this!
+        }
+
+        const { drawArrow } = this;
+        arrows.forEach((arrow) => {
+          drawArrow(sk, ...arrow);
+        });
+      });
 
       // Marker positions
       sk.noFill();
@@ -265,6 +300,41 @@ export default {
 
         sk.ellipse(x, y, r);
       });
+    },
+
+    /**
+     *
+     */
+    drawArrow(sk, direction, xPos, yPos, width, height, thickness) {
+      const halfHeight = height / 2;
+      const halfWidth = width / 2;
+      const coords = [[xPos, yPos]];
+      const isVertical = direction === Directions.LEFT || direction === Directions.RIGHT;
+      const multiplier = (direction === Directions.DOWN || direction === Directions.RIGHT ? -1 : 1);
+
+      if (isVertical) {
+        coords.push(...[
+          [xPos + ((width - thickness) * multiplier), yPos - halfHeight],
+          [xPos + (width * multiplier), yPos - halfHeight],
+          [xPos + (thickness * multiplier), yPos],
+          [xPos + (width * multiplier), yPos + halfHeight],
+          [xPos + ((width - thickness) * multiplier), yPos + halfHeight],
+        ]);
+      } else {
+        coords.push(...[
+          [xPos - halfWidth, yPos + ((height + thickness) * multiplier)],
+          [xPos - halfWidth, yPos + (height * multiplier)],
+          [xPos, yPos + (thickness * multiplier)],
+          [xPos + halfWidth, yPos + (height * multiplier)],
+          [xPos + halfWidth, yPos + ((height + thickness) * multiplier)],
+        ]);
+      }
+
+      sk.beginShape();
+      coords.forEach((coord) => {
+        sk.vertex(coord[0], coord[1]);
+      });
+      sk.endShape(sk.CLOSE);
     },
 
     /**
@@ -360,10 +430,15 @@ export default {
       const chData = this.charData;
       const chImg = this.char.image;
       const segCount = 8;
+      const isVertical = this.vertical;
 
       if (height !== 1100) {
         verticalMeasures.yValues.forEach((yVal, idx) => {
           verticalMeasures.yValues[idx] = height * (yVal / 1100);
+        });
+
+        verticalMeasures.arrowYs.forEach((yVal, idx) => {
+          verticalMeasures.arrowYs[idx] = height * (yVal / 1100);
         });
       }
 
@@ -409,6 +484,27 @@ export default {
         chImg[key].getY = x => (chImg[key].li.a * x) + chImg[key].li.b;
 
         chData[key] = chImg[key].default;
+
+        if (isVertical) {
+          this.markerArrows.push(...[
+            [
+              Directions.UP,
+              verticalMeasures[key],
+              verticalMeasures.arrowYs[0],
+              20,
+              15,
+              4,
+            ],
+            [
+              Directions.DOWN,
+              verticalMeasures[key],
+              verticalMeasures.arrowYs[1],
+              20,
+              15,
+              4,
+            ],
+          ]);
+        }
       });
 
       this.char.isProcessed = true;
