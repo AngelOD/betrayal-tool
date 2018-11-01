@@ -8,62 +8,13 @@
         @mousereleased="mouseReleased"
       />
     </div>
-    <div class="row justify-content-center" v-if="!hasError">
-      <div class="btn-group btn-group-sm" role="group" aria-label="">
-        <button
-          type="button"
-          class="btn btn-secondary"
-          @click="onClickStatButton('knowledge', 1)"
-        ><strong>K+</strong></button>
-        <button
-          type="button"
-          class="btn btn-secondary"
-          @click="onClickStatButton('might', 1)"
-        ><strong>M+</strong></button>
-        <button
-          type="button"
-          class="btn btn-secondary"
-          @click="onClickStatButton('sanity', 1)"
-        ><strong>Sa+</strong></button>
-        <button
-          type="button"
-          class="btn btn-secondary"
-          @click="onClickStatButton('speed', 1)"
-        ><strong>Sp+</strong></button>
-      </div>
-    </div>
-    <div class="row justify-content-center" v-if="!hasError">
-      <div class="btn-group btn-group-sm" role="group" aria-label="">
-        <button
-          type="button"
-          class="btn btn-secondary"
-          @click="onClickStatButton('knowledge', -1)"
-        ><strong>K-</strong></button>
-        <button
-          type="button"
-          class="btn btn-secondary"
-          @click="onClickStatButton('might', -1)"
-        ><strong>M-</strong></button>
-        <button
-          type="button"
-          class="btn btn-secondary"
-          @click="onClickStatButton('sanity', -1)"
-        ><strong>Sa-</strong></button>
-        <button
-          type="button"
-          class="btn btn-secondary"
-          @click="onClickStatButton('speed', -1)"
-        ><strong>Sp-</strong></button>
-      </div>
-    </div>
-    {{ tmpInfo }}
   </div>
 </template>
 
 <script>
 import VueP5 from 'vue-p5';
 import moment from 'moment';
-import { characters as CharList, verticalMeasures } from '../characters';
+import { characters as CharList, regularMeasures, verticalMeasures } from '../characters';
 import Directions from '../constants';
 
 let uuid = 1;
@@ -116,6 +67,7 @@ export default {
       markerArrows: [],
       markerArrowData: {
         height: 15,
+        padding: 5,
         thickness: 4,
         width: 20,
       },
@@ -251,41 +203,13 @@ export default {
         );
       }
 
-      // TODO Marker buttons
+      // Marker arrows
       sk.fill('red');
       sk.stroke('red');
       sk.strokeWeight(1);
 
-      this.statKeys.forEach((key) => {
-        const arrows = [];
-
-        if (isVertical) {
-          arrows.push(...[
-            [
-              Directions.UP,
-              verticalMeasures[key],
-              verticalMeasures.arrowYs[0],
-              20,
-              15,
-              4,
-            ],
-            [
-              Directions.DOWN,
-              verticalMeasures[key],
-              verticalMeasures.arrowYs[1],
-              20,
-              15,
-              4,
-            ],
-          ]);
-        } else {
-          // TODO Complete this!
-        }
-
-        const { drawArrow } = this;
-        arrows.forEach((arrow) => {
-          drawArrow(sk, ...arrow);
-        });
+      this.markerArrows.forEach((arrow) => {
+        this.drawArrow(sk, ...arrow);
       });
 
       // Marker positions
@@ -351,41 +275,14 @@ export default {
      *
      */
     mouseReleased(sk) {
-      const arrowHalfHeight = this.arrows.height / 2;
-      const arrowMargin = this.arrows.margin;
-      const arrowTotalWidth = (this.arrows.width + this.arrows.thickness);
-      const halfHeight = this.height / 2;
       const mX = sk.mouseX;
       const mY = sk.mouseY;
 
-      const left = [
-        arrowMargin,
-        halfHeight - arrowHalfHeight,
-        arrowMargin + arrowTotalWidth,
-        halfHeight + arrowHalfHeight,
-      ];
-      const right = [
-        this.width - (arrowMargin + arrowTotalWidth),
-        left[1],
-        this.width - arrowMargin,
-        left[3],
-      ];
-
-      if (
-        this.cid > this.minCid
-        && mX >= left[0] && mX <= left[2]
-        && mY >= left[1] && mY <= left[3]
-      ) {
-        this.onClickArrow(sk, -1);
-      }
-
-      if (
-        this.cid < this.maxCid
-        && mX >= right[0] && mX <= right[2]
-        && mY >= right[1] && mY <= right[3]
-      ) {
-        this.onClickArrow(sk, 1);
-      }
+      this.buttonCoords.forEach((coord) => {
+        if (mX >= coord.x1 && mX <= coord.x2 && mY >= coord.y1 && mY <= coord.y2) {
+          coord.onClick();
+        }
+      });
 
       return false;
     },
@@ -441,7 +338,12 @@ export default {
       const chImg = this.char.image;
       const segCount = 8;
       const isVertical = this.vertical;
-      const { onClickStatButton } = this;
+      const markerArrowWidth = this.markerArrowData.width;
+      const markerArrowHeight = this.markerArrowData.height;
+      const markerArrowPadding = this.markerArrowData.padding;
+      const markerArrowThickness = this.markerArrowData.thickness;
+      const halfMarkerArrowWidth = markerArrowWidth / 2;
+      const { onClickArrow, onClickStatButton } = this;
 
       // Find number of days till next birthday
       const now = moment()
@@ -461,6 +363,28 @@ export default {
       }
 
       this.char.daysTillBirthday = birthday.diff(now, 'days');
+
+      // Define left and right buttons for pressing
+      this.buttonCoords.push(...[
+        {
+          x1: this.arrows.margin,
+          y1: (this.height / 2) - (this.arrows.height / 2),
+          x2: this.arrows.margin + (this.arrows.width + this.arrows.thickness),
+          y2: (this.height / 2) + (this.arrows.height / 2),
+          onClick() {
+            onClickArrow(sk, -1);
+          },
+        },
+        {
+          x1: this.width - (this.arrows.margin + (this.arrows.width + this.arrows.thickness)),
+          y1: (this.height / 2) - (this.arrows.height / 2),
+          x2: this.width - this.arrows.margin,
+          y2: (this.height / 2) + (this.arrows.height / 2),
+          onClick() {
+            onClickArrow(sk, 1);
+          },
+        },
+      ]);
 
       // Adjust measurements that aren't dependent on stat key
       if (height !== 1100) {
@@ -485,11 +409,15 @@ export default {
         if (height !== 400) {
           min.y = height * (min.y / 400);
           max.y = height * (max.y / 400);
+          regularMeasures[key][0][1] = height * (regularMeasures[key][0][1] / 400);
+          regularMeasures[key][1][1] = height * (regularMeasures[key][1][1] / 400);
         }
 
         if (width !== 400) {
           min.x = width * (min.x / 400);
           max.x = width * (max.x / 400);
+          regularMeasures[key][0][0] = width * (regularMeasures[key][0][0] / 400);
+          regularMeasures[key][1][0] = width * (regularMeasures[key][1][0] / 400);
         }
 
         // Calculate position values for non-vertical layout.
@@ -529,42 +457,80 @@ export default {
               Directions.UP,
               verticalMeasures[key],
               verticalMeasures.arrowYs[0],
-              this.markerArrowData.width,
-              this.markerArrowData.height,
-              this.markerArrowData.thickness,
+              markerArrowWidth,
+              markerArrowHeight,
+              markerArrowThickness,
             ],
             [
               Directions.DOWN,
               verticalMeasures[key],
               verticalMeasures.arrowYs[1],
-              this.markerArrowData.width,
-              this.markerArrowData.height,
-              this.markerArrowData.thickness,
+              markerArrowWidth,
+              markerArrowHeight,
+              markerArrowThickness,
             ],
           ]);
 
           this.buttonCoords.push(...[
             {
-              x1: verticalMeasures[key] - (this.markerArrowData.width / 2),
-              y1: verticalMeasures.arrowYs[0],
-              x2: verticalMeasures[key] + (this.markerArrowData.width / 2),
-              y2: verticalMeasures.arrowYs[0] + this.markerArrowData.height,
+              x1: verticalMeasures[key] - (halfMarkerArrowWidth + markerArrowPadding),
+              y1: verticalMeasures.arrowYs[0] - markerArrowPadding,
+              x2: verticalMeasures[key] + (halfMarkerArrowWidth + markerArrowPadding),
+              y2: verticalMeasures.arrowYs[0] + (markerArrowHeight + markerArrowPadding),
               onClick() {
                 onClickStatButton(key, 1);
               },
             },
             {
-              x1: verticalMeasures[key] - (this.markerArrowData.width / 2),
-              y1: verticalMeasures.arrowYs[1] - this.markerArrowData.height,
-              x2: verticalMeasures[key] + (this.markerArrowData.width / 2),
-              y2: verticalMeasures.arrowYs[1],
+              x1: verticalMeasures[key] - (halfMarkerArrowWidth + markerArrowPadding),
+              y1: verticalMeasures.arrowYs[1] - (markerArrowHeight + markerArrowPadding),
+              x2: verticalMeasures[key] + (halfMarkerArrowWidth + markerArrowPadding),
+              y2: verticalMeasures.arrowYs[1] + markerArrowPadding,
               onClick() {
-                onClickStatButton(key, 2);
+                onClickStatButton(key, -1);
               },
             },
           ]);
         } else {
-          // TODO Setup non-vertical versions
+          this.markerArrows.push(...[
+            [
+              Directions.UP,
+              regularMeasures[key][0][0],
+              regularMeasures[key][0][1],
+              markerArrowWidth,
+              markerArrowHeight,
+              markerArrowThickness,
+            ],
+            [
+              Directions.DOWN,
+              regularMeasures[key][1][0],
+              regularMeasures[key][1][1],
+              markerArrowWidth,
+              markerArrowHeight,
+              markerArrowThickness,
+            ],
+          ]);
+
+          this.buttonCoords.push(...[
+            {
+              x1: regularMeasures[key][0][0] - (halfMarkerArrowWidth + markerArrowPadding),
+              y1: regularMeasures[key][0][1] + markerArrowPadding,
+              x2: regularMeasures[key][0][0] + (halfMarkerArrowWidth + markerArrowPadding),
+              y2: regularMeasures[key][0][1] + (markerArrowHeight + markerArrowPadding),
+              onClick() {
+                onClickStatButton(key, 1);
+              },
+            },
+            {
+              x1: regularMeasures[key][1][0] - (halfMarkerArrowWidth + markerArrowPadding),
+              y1: regularMeasures[key][1][1] - (markerArrowHeight + markerArrowPadding),
+              x2: regularMeasures[key][1][0] + (halfMarkerArrowWidth + markerArrowPadding),
+              y2: regularMeasures[key][1][1] + markerArrowPadding,
+              onClick() {
+                onClickStatButton(key, -1);
+              },
+            },
+          ]);
         }
       });
 
@@ -576,6 +542,13 @@ export default {
      *
      */
     onClickArrow(sk, modifyBy) {
+      if (
+        (modifyBy < 0 && this.cid === this.minCid)
+        || (modifyBy > 0 && this.cid === this.maxCid)
+      ) {
+        return;
+      }
+
       const newCid = sk.constrain(this.cid + modifyBy, this.minCid, this.maxCid);
       const newUrl = this.getUrl(newCid);
 

@@ -496,6 +496,25 @@ const characters = [
   },
 ];
 
+const regularMeasures = {
+  knowledge: [
+    [330, 290],
+    [330, 340],
+  ],
+  might: [
+    [85, 70],
+    [85, 120],
+  ],
+  sanity: [
+    [300, 70],
+    [300, 120],
+  ],
+  speed: [
+    [65, 290],
+    [65, 340],
+  ],
+};
+
 const verticalMeasures = {
   arrowYs: [660, 1030],
   yValues: [1055, 989, 948, 907, 866, 825, 784, 744, 702],
@@ -505,4 +524,4 @@ const verticalMeasures = {
   speed: 218,
 };
 
-export { characters, verticalMeasures };
+export { characters, regularMeasures, verticalMeasures };
