@@ -15,7 +15,7 @@
 import VueP5 from 'vue-p5';
 import moment from 'moment';
 import { characters as CharList, regularMeasures, verticalMeasures } from '../characters';
-import Directions from '../constants';
+import { Directions, States } from '../constants';
 
 let uuid = 1;
 
@@ -60,6 +60,7 @@ export default {
         fontStroke: 0,
         circle: 'magenta',
       },
+      currentState: States.STATE_INIT,
       hasError: false,
       height: 400,
       lastFps: 0,
