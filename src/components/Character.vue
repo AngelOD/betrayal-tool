@@ -15,7 +15,7 @@
 import VueP5 from 'vue-p5';
 import moment from 'moment';
 import { characters as CharList, regularMeasures, verticalMeasures } from '../characters';
-import Directions from '../constants';
+import { Directions, States } from '../constants';
 
 let uuid = 1;
 
@@ -29,7 +29,7 @@ export default {
   props: {
     cid: {
       type: Number,
-      required: true,
+      default: -1,
     },
     vertical: {
       type: Boolean,
@@ -60,6 +60,7 @@ export default {
         fontStroke: 0,
         circle: 'magenta',
       },
+      currentState: States.STATE_INIT,
       hasError: false,
       height: 400,
       lastFps: 0,
@@ -110,12 +111,20 @@ export default {
       const charsDir = (this.vertical ? 'chars_vert' : 'chars');
 
       this.findMinMaxCid();
+
+      if (this.cid === -1) {
+        this.bgImg = sk.loadImage('/assets/menu.png');
+        this.currentState = States.STATE_CHARSELECT;
+        return;
+      }
+
       this.char = this.getCharacterById(this.cid);
 
       if (!this.char) {
-        this.hasError = true;
+        this.currentState = States.STATE_ERROR;
       } else {
         this.bgImg = sk.loadImage(`/assets/${charsDir}/${this.char.image.name}`);
+        this.currentState = States.STATE_MAIN;
       }
     },
 
@@ -123,11 +132,13 @@ export default {
      *
      */
     setup(sk) {
-      if (!this.hasError) {
+      if (this.currentState !== States.STATE_ERROR) {
         this.bgImg.resize(this.width, 0);
         this.height = this.bgImg.height;
 
-        this.processCharacter(sk);
+        if (this.currentState === States.STATE_MAIN) {
+          this.preProcessData(sk);
+        }
       }
 
       sk.createCanvas(this.width, this.height);
@@ -137,24 +148,33 @@ export default {
      *
      */
     draw(sk) {
-      if (this.hasError) {
-        sk.background(255);
-        sk.textSize(32);
-        sk.textAlign(sk.CENTER, sk.MIDDLE);
-        sk.stroke('red');
-        sk.fill('red');
-        sk.strokeWeight(1);
-        sk.text('ERROR!', sk.width / 2, sk.height / 2);
+      switch (this.currentState) {
+        case States.STATE_MAIN:
+          this.drawMain(sk);
+          break;
 
-        return;
+        case States.STATE_CHARSELECT:
+          this.drawCharSelect(sk);
+          break;
+
+        case States.STATE_ERROR:
+        default:
+          this.drawError(sk);
+          break;
       }
+    },
 
+    /**
+     *
+     */
+    drawMain(sk) {
       const ch = this.char;
       const chData = this.charData;
       const chImg = ch.image;
       const { colors } = this;
       const isVertical = this.vertical;
       const now = Date.now();
+      const textTopOffset = sk.floor(this.height / 12) - 5;
 
       if (now >= this.lastFpsUpdate + 250) {
         this.lastFps = sk.round(sk.frameRate());
@@ -171,10 +191,10 @@ export default {
       sk.stroke(colors.fontStroke);
       sk.fill(colors.fontFill);
       sk.strokeWeight(1);
-      sk.text(`${this.lastFps}`, sk.width - 5, 5);
+      sk.text(`${this.lastFps}`, sk.width - 5, textTopOffset);
 
       sk.textAlign(sk.LEFT, sk.TOP);
-      sk.text(`${this.char.daysTillBirthday} days`, 5, 5);
+      sk.text(`${this.char.daysTillBirthday} days`, 5, textTopOffset);
 
       // Browse-arrows
       const middlePos = sk.height / 2;
@@ -239,6 +259,27 @@ export default {
     /**
      *
      */
+    drawCharSelect(sk) {
+      sk.background(this.colors.bg);
+      sk.image(this.bgImg, 0, 0);
+    },
+
+    /**
+     *
+     */
+    drawError(sk) {
+      sk.background(255);
+      sk.textSize(32);
+      sk.textAlign(sk.CENTER, sk.MIDDLE);
+      sk.stroke('red');
+      sk.fill('red');
+      sk.strokeWeight(1);
+      sk.text('ERROR!', sk.width / 2, sk.height / 2);
+    },
+
+    /**
+     *
+     */
     drawArrow(sk, direction, xPos, yPos, width, height, thickness) {
       const halfHeight = height / 2;
       const halfWidth = width / 2;
@@ -278,11 +319,19 @@ export default {
       const mX = sk.mouseX;
       const mY = sk.mouseY;
 
-      this.buttonCoords.forEach((coord) => {
-        if (mX >= coord.x1 && mX <= coord.x2 && mY >= coord.y1 && mY <= coord.y2) {
-          coord.onClick();
-        }
-      });
+      switch (this.currentState) {
+        case States.STATE_CHARSELECT:
+          this.onClickCharSelector(sk, sk.floor(mY / (this.height / 12)) + 1);
+          break;
+
+        case States.STATE_MAIN:
+        default:
+          this.buttonCoords.forEach((coord) => {
+            if (mX >= coord.x1 && mX <= coord.x2 && mY >= coord.y1 && mY <= coord.y2) {
+              coord.onClick();
+            }
+          });
+      }
 
       return false;
     },
@@ -329,7 +378,17 @@ export default {
     /**
      *
      */
-    processCharacter(sk) {
+    navigateTo(sk, cid) {
+      const newCid = sk.constrain(cid, this.minCid, this.maxCid);
+      const newUrl = this.getUrl(newCid);
+
+      window.location.replace(newUrl);
+    },
+
+    /**
+     *
+     */
+    preProcessData(sk) {
       if (this.char.isProcessed) { return; }
 
       const { height, width } = this;
@@ -343,7 +402,7 @@ export default {
       const markerArrowPadding = this.markerArrowData.padding;
       const markerArrowThickness = this.markerArrowData.thickness;
       const halfMarkerArrowWidth = markerArrowWidth / 2;
-      const { onClickArrow, onClickStatButton } = this;
+      const { getUrl, onClickArrow, onClickStatButton } = this;
 
       // Find number of days till next birthday
       const now = moment()
@@ -364,7 +423,7 @@ export default {
 
       this.char.daysTillBirthday = birthday.diff(now, 'days');
 
-      // Define left and right buttons for pressing
+      // Define left and right buttons for pressing, and char select link
       this.buttonCoords.push(...[
         {
           x1: this.arrows.margin,
@@ -382,6 +441,15 @@ export default {
           y2: (this.height / 2) + (this.arrows.height / 2),
           onClick() {
             onClickArrow(sk, 1);
+          },
+        },
+        {
+          x1: 0,
+          y1: 0,
+          x2: this.width,
+          y2: sk.floor(this.height / 12),
+          onClick() {
+            window.location.replace(getUrl(-1));
           },
         },
       ]);
@@ -549,10 +617,14 @@ export default {
         return;
       }
 
-      const newCid = sk.constrain(this.cid + modifyBy, this.minCid, this.maxCid);
-      const newUrl = this.getUrl(newCid);
+      this.navigateTo(sk, this.cid + modifyBy);
+    },
 
-      window.location.replace(newUrl);
+    /**
+     *
+     */
+    onClickCharSelector(sk, cid) {
+      this.navigateTo(sk, cid);
     },
 
     /**

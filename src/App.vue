@@ -21,7 +21,7 @@ export default {
   data() {
     return {
       params: {
-        cid: 2,
+        cid: -1,
         vertical: true,
       },
     };
