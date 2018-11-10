@@ -142,6 +142,7 @@ export default {
       }
 
       sk.createCanvas(this.width, this.height);
+      sk.frameRate(10);
     },
 
     /**
