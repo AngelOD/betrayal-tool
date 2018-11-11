@@ -14,6 +14,7 @@
 <script>
 import VueP5 from 'vue-p5';
 import moment from 'moment';
+import { debounce } from 'lodash';
 import { characters as CharList, regularMeasures, verticalMeasures } from '../characters';
 import { Directions, States } from '../constants';
 
@@ -82,7 +83,20 @@ export default {
 
   computed: {},
 
-  watch: {},
+  watch: {
+    charData: {
+      // eslint-disable-next-line func-names
+      handler: debounce(function (val) {
+        const prefix = `charData.${this.char.cid}`;
+        const expires = 2 * 60 * 60 * 1000;
+
+        this.statKeys.forEach((key) => {
+          this.$ls.set(`${prefix}.${key}`, val[key], expires);
+        });
+      }, 500),
+      deep: true,
+    },
+  },
 
   beforeCreate() {
     this.uuid = `tbchar${uuid}`;
@@ -113,7 +127,7 @@ export default {
       this.findMinMaxCid();
 
       if (this.cid === -1) {
-        this.bgImg = sk.loadImage('/assets/menu.png');
+        this.bgImg = sk.loadImage('/assets/charselect.png');
         this.currentState = States.STATE_CHARSELECT;
         return;
       }
@@ -142,6 +156,7 @@ export default {
       }
 
       sk.createCanvas(this.width, this.height);
+      sk.frameRate(10);
     },
 
     /**
@@ -174,7 +189,6 @@ export default {
       const { colors } = this;
       const isVertical = this.vertical;
       const now = Date.now();
-      const textTopOffset = sk.floor(this.height / 12) - 5;
 
       if (now >= this.lastFpsUpdate + 250) {
         this.lastFps = sk.round(sk.frameRate());
@@ -186,17 +200,15 @@ export default {
       sk.image(this.bgImg, 0, 0);
 
       // Text information
-      sk.textSize(14);
-      sk.textAlign(sk.RIGHT, sk.TOP);
+      sk.textSize(20);
       sk.stroke(colors.fontStroke);
       sk.fill(colors.fontFill);
-      sk.strokeWeight(1);
-      sk.text(`${this.lastFps}`, sk.width - 5, textTopOffset);
-
-      sk.textAlign(sk.LEFT, sk.TOP);
-      sk.text(`${this.char.daysTillBirthday} days`, 5, textTopOffset);
+      sk.strokeWeight(3);
+      sk.textAlign(sk.CENTER, sk.TOP);
+      sk.text(`${this.char.daysTillBirthday} days`, sk.width / 2, sk.height / 3);
 
       // Browse-arrows
+      sk.strokeWeight(1);
       const middlePos = sk.height / 2;
 
       if (this.cid > this.minCid) {
@@ -516,7 +528,7 @@ export default {
         chImg[key].getY = x => (chImg[key].li.a * x) + chImg[key].li.b;
 
         // Set current selection to be the default one for the character
-        chData[key] = chImg[key].default;
+        chData[key] = this.$ls.get(`charData.${this.char.cid}.${key}`, chImg[key].default);
 
         // Setup the raise and lower values arrows one time.
         if (isVertical) {
